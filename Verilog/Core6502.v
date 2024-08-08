@@ -3,7 +3,7 @@
 //
 //         2012 - 2024
 //
-// authors:  org -  top part
+// authors: ogamespec -  top part
 //           andkorzh -  bottom part
 //
 // Pads:
@@ -30,9 +30,7 @@ module Core6502 (
     output[15:0] ADDR;
     inout[7:0]   DATA;
 	
-	 
-    reg [15:0]ADDR;
-    reg [7:0]DLR, DOR;
+    wire [7:0]DLR, DOR;
 	 
     // Clock Generator
     assign PHI1 = ~PHI0;
@@ -76,14 +74,15 @@ module Core6502 (
 	 mylatch PRDY1       (Clk, PRDY1_Out, ~RDY,  PHI2);
 	 mylatch PRDY2    	(Clk, _PRDY, PRDY1_Out, PHI1);
 	 mylatch RWLatch     (Clk, RWLatch_Out, WR,  PHI1);
-	
-always @(posedge Clk) begin
-         if (PHI1)             DOR[7:0] <= DB[7:0];
-         if (PHI2)             DLR[7:0] <= DATA[7:0];
-         if (ADL_ABL & PHI1)  ADDR[7:0] <= ADL[7:0];
-         if (ADH_ABH & PHI1) ADDR[15:8] <= ADH[7:0];
-                      end
-			 
+	 
+	 wire ADDRL_EN, ADDRH_EN;
+	 assign ADDRL_EN = ADL_ABL & PHI1;
+	 assign ADDRH_EN = ADH_ABH & PHI1;
+	 mylatch DOR_Latch[7:0]   (Clk, DOR[7:0],   DB[7:0],   PHI1);
+	 mylatch DLR_Latch[7:0]   (Clk, DLR[7:0],   DATA[7:0], PHI2);
+	 mylatch ADDRL_Latch[7:0] (Clk, ADDR[7:0],  ADL[7:0], ADDRL_EN);
+	 mylatch ADDRH_Latch[7:0] (Clk, ADDR[15:8], ADH[7:0], ADDRH_EN);
+	 		 
     Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATA[7:0] );
 	 
 	 Decoder decode ( decoder[128:0], IR[7:0], _T0, _T1X, _T2, _T3, _T4, _T5, _PRDY );
@@ -136,22 +135,20 @@ endmodule   // Core6502
 module Predecode ( Clk, PHI1, PHI2, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATA );
 
     input Clk, PHI1, PHI2, Z_IR, FETCH;
-	 output reg[7:0]IR;
+	 output [7:0]IR;
     output IMPLIED, _TWOCYCLE;
     input [7:0]DATA;
     wire temp1, temp2;
 	 wire [7:0]PDout;
-	 reg[7:0]PD;
+    wire [7:0]PD;
     assign PDout[7:0] =  Z_IR ? 8'b00000000 : PD[7:0];
     assign IMPLIED    = ~(  PDout[0] | PDout[2] | ~PDout[3] );
     assign temp1      = ~( ~PDout[0] | PDout[2] | ~PDout[3] | PDout[4] );
     assign temp2      = ~(  PDout[0] | PDout[2] |  PDout[3] | PDout[4] | ~PDout[7] ); 
     assign _TWOCYCLE  = ~( temp1 | temp2 | ( IMPLIED & ( PDout[1] | PDout[4] | PDout[7] )));
 
-always @(posedge Clk) begin
-        if (FETCH & PHI1) IR[7:0] <= PDout[7:0];       
-        if (PHI2)         PD[7:0] <= DATA[7:0];
-                      end
+	 mylatch IR_Latch[7:0] (Clk, IR[7:0], PDout[7:0], FETCH & PHI1);
+	 mylatch PD_Latch[7:0] (Clk, PD[7:0], DATA[7:0],  PHI2);	 
 
 endmodule   // Predecode  
 
@@ -832,7 +829,7 @@ module Dispatcher ( Clk, PHI1, PHI2,
     mylatch ipc1_latch (Clk, ipc1_out, B_OUT, PHI1 );  
     mylatch ipc2_latch (Clk, ipc2_out, BRA, PHI1 );
     mylatch ipc3_latch (Clk, ipc3_out, ~( BR_Latch1_Out | _ready | IMPLIED ), PHI1 );
-    assign _IPC = ~( ipc1_out & ( ipc2_out | ipc3_out ));
+    assign _IPC = ipc1_out & ( ipc2_out | ipc3_out );
 	 assign  BRA =  ( BRFW ^ ~ACR ) & BR_Latch2_Out;
 
     // Fetch Control
@@ -924,7 +921,6 @@ module Buses (
 	output [7:0]ADH 	       // ADH Bus		
 );
 
-// Combinatorics
 // Intermediate buses
 wire [7:0]DBT;  
 wire [7:0]SBT;
@@ -955,18 +951,17 @@ module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, S_S, SB_S,
                  SB, X_REG, Y_REG, S_REG );
 
     input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, S_S, SB_S;
-
     input [7:0] SB;
-	 output reg [7:0] X_REG, Y_REG, S_REG;
-    reg [7:0]S_REG_1;
-// Clocks 
-always @(posedge Clk) begin
-    if (SB_X) X_REG[7:0] <= SB[7:0];
-    if (SB_Y) Y_REG[7:0] <= SB[7:0];
-    if (SB_S) S_REG_1[7:0] <= SB[7:0];
-	 if (PHI2) S_REG[7:0] <= S_REG_1[7:0];
-                      end
-							 
+	 output[7:0] X_REG, Y_REG, S_REG;
+	 
+	 
+    wire [7:0]S_REG_1;
+	 
+mylatch X_REG_Latch[7:0]  (Clk, X_REG[7:0],   SB[7:0],      SB_X);
+mylatch Y_REG_Latch[7:0]  (Clk, Y_REG[7:0],   SB[7:0],      SB_Y);
+mylatch S_REG1_Latch[7:0] (Clk, S_REG_1[7:0], SB[7:0],      SB_S);
+mylatch S_REG_Latch[7:0]  (Clk, S_REG[7:0],  S_REG_1[7:0],  PHI2);	 
+						 
 endmodule   // XYSRegs
 
 // -----------------------------------------------------------------
@@ -994,17 +989,16 @@ module ALU (
 	input _DAA,              // Perform correction after addition 
 	input _DSA,              // Perform correction after subtraction
 	// Outputs
-	output reg [7:0]ACC,     // accumulator output
-	output reg [7:0]ADD,     // Output of the result of operations
+	output [7:0]ACC,         // accumulator output
+	output [7:0]ADD,         // Output of the result of operations
    output ACR,              // ALU carry output
-	output reg AVR           // ALU overflow output
+	output AVR               // ALU overflow output
 );
-// Variables
-reg [7:0]AI;                    // AI input latch
-reg [7:0]BI;                    // BI input latch
-reg LATCH_C7;                   // ALU overflow circuit latches
-//reg LATCH_DC7;                  // ALU overflow circuit latches
-//reg DAAL, DAAHR, DSAL, DSAHR;   // Decimal correction control latches  
+
+wire[7:0] AI, BI;                 // AI/BI input latch
+wire LATCH_C7;                    // ALU overflow circuit latches
+wire LATCH_DC7;                   // ALU overflow circuit latches
+wire DAAL, DAAHR, DSAL, DSAHR;    // Decimal correction control latches  
 // Combinatorics of logical operations
 wire [7:0]ANDo;                 // Logical AND
 wire [7:0]ORo;                  // Logical OR
@@ -1018,14 +1012,13 @@ wire [7:0]RESULT;               // ALU result bus
 assign RESULT[7:0] = ({8{ANDS}} & ANDo[7:0]) | ({8{ORS}} & ORo [7:0]) | ({8{EORS}} & XORo[7:0]) | ({8{SRS}} & {1'b0 ,ANDo[7:1]}) | ({8{SUMS}} & SUMo[7:0]);
 // Combinatorics of ALU overflow
 wire [7:0]CIN;	
-assign CIN[7:0] = { COUT[6:0], ~_ACIN };  	// assign CIN[7:0] = { COUT[6:0], ~_ACIN };	// { COUT[6:4], DCOUT3, COUT[2:0], ~_ACIN };
+assign CIN[7:0] = { COUT[6:4], DCOUT3, COUT[2:0], ~_ACIN };  	// assign CIN[7:0] = { COUT[6:0], ~_ACIN };	// { COUT[6:4], DCOUT3, COUT[2:0], ~_ACIN };
 wire [7:0]COUT;
 assign COUT[7:0] = ( CIN[7:0] & ORo[7:0] ) | ANDo[7:0] ;
-//wire DCOUT3;
-//assign DCOUT3 = COUT[3] & ~DC3;
-assign ACR = LATCH_C7;	               //	ACR = LATCH_C7 | LATCH_DC7;
+wire DCOUT3;
+assign DCOUT3 = COUT[3] & ~DC3;
+assign ACR = LATCH_C7 | LATCH_DC7;	               //	ACR = LATCH_C7 | LATCH_DC7;
 //BCD
-/*
 wire DAAH, DSAH;
 assign DAAH =    ACR & DAAHR;
 assign DSAH = ~( ACR | DSAHR );
@@ -1057,23 +1050,22 @@ assign f   = ~( ANDo[6] | XORo[7] );
 assign g   = ~( XORo[5] | XORo[6] | ANDo[5] | COUT[4] );
 assign DC3 = ~( _DAA | (( b | ~ORo[2]  ) & ( c | d )) );
 assign DC7 = ~( _DAA | (( e | ~XORo[6] ) & ( f | g )) );
-*/
-// Logics
-always @(posedge Clk) begin
-            if (Z_ADD | SB_ADD )             AI[7:0] <= Z_ADD ? 8'h00 : SB[7:0];                   		
-		      if (DB_ADD | NDB_ADD | ADL_ADD ) BI[7:0] <= NDB_ADD ? ~DB[7:0] : ADL_ADD ? ADL[7:0] : DB[7:0]; 	                              																
-		      if (SB_AC)  ACC[7:0]  <= SB[7:0];	     //	if (SB_AC)  ACC[7:0]  <= SB[7:0];	// <= BCDRES[7:0];
-		               if (PHI2) begin
-		             ADD[7:0]  <= RESULT[7:0];
-				       LATCH_C7  <= COUT[7];
-					    //LATCH_DC7 <= DC7;
-								 AVR <=  ( COUT[6] & ORo[7] ) | ( ~COUT[6] & ~ANDo[7] );
-		                 //DAAL  <=  ( DCOUT3 & ~_DAA );
-						     //DAAHR <= ~_DAA;
-						     //DSAL  <= ~( DCOUT3 | _DSA );
-						     //DSAHR <=  _DSA;
-		                         end
-                      end
+
+mylatch AI_Latch[7:0] (Clk, AI[7:0], Z_ADD ? 8'h00 : SB[7:0], Z_ADD | SB_ADD );
+mylatch BI_Latch[7:0] (Clk, BI[7:0], NDB_ADD ? ~DB[7:0] : ADL_ADD ? ADL[7:0] : DB[7:0], DB_ADD | NDB_ADD | ADL_ADD );
+
+mylatch ACC_Latch[7:0] (Clk, ACC[7:0], BCDRES[7:0], SB_AC );  // <= BCDRES[7:0];
+mylatch ADD_Latch[7:0] (Clk, ADD[7:0], RESULT[7:0], PHI2 );
+
+mylatch C7_Latch  (Clk, LATCH_C7,  COUT[7], PHI2 );
+mylatch DC7_Latch (Clk, LATCH_DC7, DC7,     PHI2 );
+mylatch AVR_Latch (Clk, AVR, ( COUT[6] & ORo[7] ) | ( ~COUT[6] & ~ANDo[7] ), PHI2 );
+//BCD latches
+mylatch DAAL_Latch  (Clk, DAAL,  DCOUT3 & ~_DAA,     PHI2 );
+mylatch DAAHR_Latch (Clk, DAAHR, ~_DAA,              PHI2 );
+mylatch DSAL_Latch  (Clk, DSAL,  ~( DCOUT3 | _DSA ), PHI2 );
+mylatch DSAHR_Latch (Clk, DSAHR, _DSA,               PHI2 );
+
 // End of ALU module
 endmodule       
 
@@ -1093,37 +1085,27 @@ module ProgramCounter (
 	input	ADH_PCH,           // Loading data from the ADH bus
 	input [7:0]ADH,          // ADH Bus			
 	// Outputs
-	output reg [7:0]PCL,     // Output of the LSB 8 bits of PC 
-	output reg [7:0]PCH      // Output of the MSB 8 bits of PC  
+	output [7:0]PCL,         // Output of the LSB 8 bits of PC 
+	output [7:0]PCH          // Output of the MSB 8 bits of PC  
 );
-// Variables
-reg [7:0]PCLS;              // PCL Counter Intermediate Register
-reg [7:0]PCHS;              // PCH Counter Intermediate Register
-// Combinatorics
+
 wire [7:0]ADL_COUT;
-assign ADL_COUT[7:0] =  PCLS[7:0] & {ADL_COUT[6:0], ~_IPC}; 
+assign ADL_COUT[7:0] =  PCLS[7:0] & {ADL_COUT[6:0], _IPC}; 
 wire [7:0]ADH_COUT;
 assign ADH_COUT[7:0] =  PCHS[7:0] & {ADH_COUT[6:4], PCH_03, ADH_COUT[2:0], PCH_IN};
 wire PCH_IN;
-assign PCH_IN = PCLS[7] & PCLS[6] & PCLS[5] & PCLS[4] & PCLS[3] & PCLS[2] & PCLS[1] & PCLS[0] & ~_IPC;
+assign PCH_IN = PCLS[7] & PCLS[6] & PCLS[5] & PCLS[4] & PCLS[3] & PCLS[2] & PCLS[1] & PCLS[0] & _IPC;
 wire PCH_03;
-assign PCH_03 = PCHS[3] & PCHS[2] & PCHS[1] & PCHS[0] & ~_IPC & PCH_IN;
-// Logics
-always @(posedge Clk) begin
-       if ( PCL_PCL | ADL_PCL ) begin
-		 PCLS[7:0] <= ( { 8 { PCL_PCL }} & PCL[7:0] )|( { 8 { ADL_PCL }} & ADL[7:0] );
-		                          end										  
-		 if ( PCH_PCH | ADH_PCH ) begin								  
-		 PCHS[7:0] <= ( { 8 { PCH_PCH }} & PCH[7:0] )|( { 8 { ADH_PCH }} & ADH[7:0] );
-		                          end				  
-		 if (PHI2) begin
-       PCL[7:0] <= ( PCLS[7:0] ^ {ADL_COUT[6:0], ~_IPC} ); 
-		 PCH[7:0] <= ( PCHS[7:0] ^ {ADH_COUT[6:4], PCH_03, ADH_COUT[2:0], PCH_IN} ); 
-		           end
-                      end
+assign PCH_03 = PCHS[3] & PCHS[2] & PCHS[1] & PCHS[0] & PCH_IN;
+//PCL
+wire[7:0] PCLS, PCHS;       // PCL/PCH Counter Intermediate Register
+mylatch PCLS_Latch[7:0] (Clk, PCLS[7:0], ( { 8 { PCL_PCL }} & PCL[7:0] )|( { 8 { ADL_PCL }} & ADL[7:0] ), PCL_PCL | ADL_PCL );
+mylatch PCL_Latch[7:0]  (Clk, PCL[7:0],  ( PCLS[7:0] ^ { ADL_COUT[6:0], _IPC } ), PHI2 );
+//PCH
+mylatch PCHS_Latch[7:0] (Clk, PCHS[7:0], ( { 8 { PCH_PCH }} & PCH[7:0] )|( { 8 { ADH_PCH }} & ADH[7:0] ), PCH_PCH | ADH_PCH );
+mylatch PCH_Latch[7:0]  (Clk, PCH[7:0],  ( PCHS[7:0] ^ { ADH_COUT[6:4], PCH_03, ADH_COUT[2:0], PCH_IN } ), PHI2 );
+
 // End of module Program Counter (PC)
-
-
 endmodule   // ProgramCounter
 
 // --------------------------------------------------------------------------------

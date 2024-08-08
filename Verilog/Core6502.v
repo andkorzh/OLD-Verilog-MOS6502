@@ -3,7 +3,7 @@
 //
 //         2012 - 2024
 //
-// authors: ogamespec -  top part
+// authors:  org -  top part
 //           andkorzh -  bottom part
 //
 // Pads:

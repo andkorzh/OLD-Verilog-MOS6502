@@ -527,9 +527,9 @@ module RandomLogic ( Clk, PHI1, PHI2, _ADL_PCL, PC_DB,
     // ADH/ADL Control
     wire _Z_ADH17, _ADL_ABL, ADHABH_Out, ADLABL_Out, ZADH17_Out, SBA, a;
 	 
-	 assign a = ~(~( T2 | _PCH_PCH | JSR_5 | IND ) | _ready );
+    assign a = ~(~( T2 | _PCH_PCH | JSR_5 | IND ) | _ready );
 	 
-	 assign SBA = ~(~( PGX | BR3 ) | ~( ~NotReadyPhi1 & ACRL2 ));
+    assign SBA = ~( _SB_ADH | ~( ~NotReadyPhi1 & ACRL2 ));
     mylatch ADHABH (Clk, ADHABH_Out, ~((( a | SBA ) & ~BR3 ) | Z_ADL0 ), PHI2 );  //    
     assign ADH_ABH = ~ADHABH_Out;
 	 

@@ -22,13 +22,14 @@ module Core6502 (
     // Inputs
     Clk, PHI0, _NMI, _IRQ, _RES, RDY, SO,
     // Inout
-	 DATA
+	 DATAo, DATAi
 );
 
     input  Clk, PHI0, _NMI, _IRQ, _RES, RDY, SO;
     output PHI1, PHI2, RW, SYNC;
     output[15:0] ADDR;
-    inout[7:0]   DATA;
+    output[7:0]  DATAo;
+	 input[7:0]   DATAi;
 	
     wire [7:0]DLR, DOR;
 	 
@@ -39,7 +40,7 @@ module Core6502 (
     assign SYNC = T1;
 	 assign RW = ~RWLatch_Out;
 	 // External Data Bus Control
-	 assign DATA[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
+	 assign DATAo[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
     // DL Bus    
 	 assign DL[7:0] = DLR[7:0] & {8{PHI1}};
     // Internal wires
@@ -79,11 +80,11 @@ module Core6502 (
 	 assign ADDRL_EN = ADL_ABL & PHI1;
 	 assign ADDRH_EN = ADH_ABH & PHI1;
 	 mylatch DOR_Latch[7:0]   (Clk, PHI1, DOR[7:0], DB[7:0]);
-	 mylatch DLR_Latch[7:0]   (Clk, PHI2, DLR[7:0], DATA[7:0]);
+	 mylatch DLR_Latch[7:0]   (Clk, PHI2, DLR[7:0], DATAi[7:0]);
 	 mylatch ADDRL_Latch[7:0] (Clk, ADDRL_EN, ADDR[7:0],  ADL[7:0]);
 	 mylatch ADDRH_Latch[7:0] (Clk, ADDRH_EN, ADDR[15:8], ADH[7:0]);
 	 		 
-    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATA[7:0] );
+    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATAi[7:0] );
 	 
 	 Decoder decode ( decoder[128:0], IR[7:0], _T0, _T1X, _T2, _T3, _T4, _T5, _PRDY );
 	 
@@ -1014,7 +1015,7 @@ assign RESULT[7:0] = ({8{ANDS}} & ANDo[7:0]) | ({8{ORS}} & ORo [7:0]) | ({8{EORS
 wire [7:0]CIN;	
 assign CIN[7:0] = { COUT[6:4], DCOUT3, COUT[2:0], ~_ACIN };  	// assign CIN[7:0] = { COUT[6:0], ~_ACIN };	// { COUT[6:4], DCOUT3, COUT[2:0], ~_ACIN };
 wire [7:0]COUT;
-assign COUT[7:0] = ( CIN[7:0] & XORo[7:0] ) | ANDo[7:0] ;
+assign COUT[7:0] = ( CIN[7:0] & ORo[7:0] ) | ANDo[7:0] ;
 wire DCOUT3;
 assign DCOUT3 = COUT[3] | DC3;
 assign ACR = LATCH_C7 | LATCH_DC7;	               //	ACR = LATCH_C7 | LATCH_DC7;

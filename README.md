@@ -5,6 +5,7 @@ All these years, I never got around to testing it in action.
 It had big problems with the operability of the lower part of the processor 
 and I had to replace the lower part with my ready-made 6502 modules. 
 The project turned out to be working and was tested as part of the FPGA APU 2A03. 
+Successfully passed the functional test of Klaus Dormann.
 
 This design fits into the Altera EPM570 CPLD and is very optimal in terms of the resources used.
 

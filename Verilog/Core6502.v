@@ -3,7 +3,7 @@
 //
 //         2012 - 2024
 //
-// authors: ogamespec -  top part
+// authors:  org      -  top part
 //           andkorzh -  bottom part
 //
 // Pads:
@@ -1112,9 +1112,11 @@ endmodule   // ProgramCounter
 // --------------------------------------------------------------------------------
 
 module mylatch( 
-   // Outputs 
-   Clk, en, dout, 
-   // Inputs 
+   // Clocks 
+   Clk, en, 
+   // Output	
+   dout, 
+   // Input 
    din 
 );
     input Clk;

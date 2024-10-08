@@ -9,7 +9,7 @@ Successfully passed the functional test of Klaus Dormann.
 
 This design fits into the Altera EPM570 CPLD and is very optimal in terms of the resources used.
 
-![570res](https://github.com/user-attachments/assets/d9e16637-b5d6-4586-b265-27229caaaa9a)
+![EPM570Comp](https://github.com/user-attachments/assets/bc6b77db-352e-4342-93e0-c542ffc82d3d)
 
 
 

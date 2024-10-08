@@ -22,14 +22,14 @@ module Core6502 (
     // Inputs
     Clk, PHI0, _NMI, _IRQ, _RES, RDY, SO,
     // Inout
-	 DATAo, DATAi
+	 DATA
 );
 
     input  Clk, PHI0, _NMI, _IRQ, _RES, RDY, SO;
     output PHI1, PHI2, RW, SYNC;
     output[15:0] ADDR;
-    output[7:0]  DATAo;
-	 input[7:0]   DATAi;
+    inout[7:0]   DATA;
+
 	
     wire [7:0]DLR, DOR;
 	 
@@ -40,9 +40,9 @@ module Core6502 (
     assign SYNC = T1;
 	 assign RW = ~RWLatch_Out;
 	 // External Data Bus Control
-	 assign DATAo[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
+	 assign DATA[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
     // DL Bus    
-	 assign DL[7:0] = DLR[7:0] & {8{PHI1}};
+	 assign DL[7:0] =   DLR[7:0] & {8{PHI1}};
     // Internal wires
 	 wire  PHI1;
     wire  PHI2;
@@ -57,16 +57,17 @@ module Core6502 (
     wire ADD_SB06, ADD_SB7, ADD_ADL, AC_SB, AC_DB;
     wire _ACIN, _DAA, _DSA;
     wire P_DB, DB_P, DBZ_Z, DB_N, IR5_C, ACR_C, DB_C, IR5_D, IR5_I, AVR_V, DB_V, ZERO_V, ONE_V;
-    wire Y_SB, SB_Y, X_SB, SB_X, S_SB, S_ADL, S_S, SB_S;
+    wire Y_SB, SB_Y, X_SB, SB_X, S_SB, S_ADL, SB_S, S_S;
     wire Z_ADL0, Z_ADL1, Z_ADL2, ADL_ABL, ADH_ABH, SB_DB, SB_ADH, Z_ADH0, Z_ADH17, DL_ADL, DL_ADH, DL_DB, RD;
     wire STOR, _IPC, PCL_PCL, PCL_ADL, ADL_PCL, PCL_DB, PCH_PCH, PCH_ADH, ADH_PCH, PCH_DB;
     wire T0, _T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7;      
     // Internal buses
 	 wire [128:0] decoder;
-    wire [7:0] IR, DL, DB, SB, ADH, ADL, PCH, PCL, FLAG, S_REG, Y_REG, X_REG, ADD, ACC ;
+    wire [7:0] IR, DL, DB, SB, ADH, ADL, PCH, PCL, FLAG, S_REG, Y_REG, X_REG, ADD, ACC;
     // Top Latches
 	 wire RESP_Latch1_Out, IRQP_Latch1_Out;
-    wire PRDY1_Out, _PRDY, RWLatch_Out;	
+    wire PRDY1_Out, _PRDY, RWLatch_Out;
+	 //                   Clk  EN    D_OUT             D_IN
 	 mylatch IRQP_Latch1 (Clk, PHI2, IRQP_Latch1_Out, _IRQ);
 	 mylatch IRQP_Latch2 (Clk, PHI1, _IRQP, IRQP_Latch1_Out);
 	 mylatch NMIP_Latch  (Clk, PHI2, _NMIP, _NMI);
@@ -76,22 +77,19 @@ module Core6502 (
 	 mylatch PRDY2    	(Clk, PHI1, _PRDY, PRDY1_Out);
 	 mylatch RWLatch     (Clk, PHI1, RWLatch_Out, WR);
 	 
-	 wire ADDRL_EN, ADDRH_EN;
-	 assign ADDRL_EN = ADL_ABL & PHI1;
-	 assign ADDRH_EN = ADH_ABH & PHI1;
 	 mylatch DOR_Latch[7:0]   (Clk, PHI1, DOR[7:0], DB[7:0]);
-	 mylatch DLR_Latch[7:0]   (Clk, PHI2, DLR[7:0], DATAi[7:0]);
-	 mylatch ADDRL_Latch[7:0] (Clk, ADDRL_EN, ADDR[7:0],  ADL[7:0]);
-	 mylatch ADDRH_Latch[7:0] (Clk, ADDRH_EN, ADDR[15:8], ADH[7:0]);
+	 mylatch DLR_Latch[7:0]   (Clk, PHI2, DLR[7:0], DATA[7:0]);
+	 mylatch ADDRL_Latch[7:0] (Clk, ADL_ABL & PHI1, ADDR[7:0],  ADL[7:0]);
+	 mylatch ADDRH_Latch[7:0] (Clk, ADH_ABH & PHI1, ADDR[15:8], ADH[7:0]);
 	 		 
-    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATAi[7:0] );
+    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATA[7:0] );
 	 
 	 Decoder decode ( decoder[128:0], IR[7:0], _T0, _T1X, _T2, _T3, _T4, _T5, _PRDY );
 	 
 	 InterruptControl interrupts ( Clk, PHI1, PHI2, Z_ADL0, Z_ADL1, Z_ADL2, DORES, BRK6E, B_OUT,
-         RESP, _NMIP, _IRQP, _I_OUT, decoder[80], T0, decoder[22], _ready );
+        RESP, _NMIP, _IRQP, _I_OUT, decoder[80], T0, decoder[22], _ready );
 			
-	 RandomLogic random ( Clk, PHI1, PHI2, _ADL_PCL, PC_DB, ADH_ABH, ADL_ABL, Y_SB, X_SB, SB_Y, SB_X, S_SB, S_ADL, SB_S, S_S, 
+	 RandomLogic random ( Clk, PHI1, PHI2, _ADL_PCL, PC_DB, ADH_ABH, ADL_ABL, Y_SB, X_SB, SB_Y, SB_X, S_SB, S_ADL, SB_S, S_S,
         NDB_ADD, DB_ADD, Z_ADD, SB_ADD, ADL_ADD, ANDS, EORS, ORS, _ACIN, SRS, SUMS, _DAA, ADD_SB7, ADD_SB06, ADD_ADL, _DSA,
         Z_ADH0, SB_DB, SB_AC, SB_ADH, Z_ADH17, AC_SB, AC_DB, 
         ADH_PCH, PCH_PCH, PCH_DB, PCL_DB, PCH_ADH, PCL_PCL, PCL_ADL, ADL_PCL, DL_ADL, DL_ADH, DL_DB,
@@ -114,7 +112,7 @@ module Core6502 (
     DL[7:0], PCL[7:0], PCH[7:0], FLAG[7:0], ADD[7:0], ACC[7:0], Y_REG[7:0], X_REG[7:0], S_REG[7:0], DB[7:0],
 	 SB[7:0], ADL[7:0], ADH[7:0]);
 	 
-	 XYSRegs regs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, S_S, SB_S, SB[7:0], X_REG[7:0], Y_REG[7:0], S_REG[7:0] );
+	 XYSRegs regs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S, SB[7:0], X_REG[7:0], Y_REG[7:0], S_REG[7:0] );
 
     ALU alu ( Clk, PHI2, Z_ADD, SB[7:0], SB_ADD, DB[7:0], NDB_ADD, DB_ADD, ADL[7:0], ADL_ADD, _ACIN, ANDS, ORS, EORS, SRS,               
               SUMS, SB_AC, _DAA, _DSA, ACC[7:0], ADD[7:0], ACR, AVR );
@@ -142,7 +140,7 @@ module Predecode ( Clk, PHI1, PHI2, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, DATA );
     wire temp1, temp2;
 	 wire [7:0]PDout;
     wire [7:0]PD;
-    assign PDout[7:0] =  Z_IR ? 8'b00000000 : PD[7:0];
+    assign PDout[7:0] =  {8{~Z_IR}}  & PD[7:0];
     assign IMPLIED    = ~(  PDout[0] | PDout[2] | ~PDout[3] );
     assign temp1      = ~( ~PDout[0] | PDout[2] | ~PDout[3] | PDout[4] );
     assign temp2      = ~(  PDout[0] | PDout[2] |  PDout[3] | PDout[4] | ~PDout[7] ); 
@@ -441,11 +439,11 @@ module RandomLogic ( Clk, PHI1, PHI2, _ADL_PCL, PC_DB,
     assign _SB_S = ~( STKOP | ~( ~JSR2 | _ready ) | decoder[13] );
     mylatch SBS (Clk, PHI2, SBS_Out, _SB_S);
     assign SB_S = ~(SBS_Out | PHI2);
-    mylatch SS  (Clk, PHI2, SS_Out, ~_SB_S);
+	 mylatch SS  (Clk, PHI2, SS_Out, ~_SB_S);
     assign S_S = ~(SS_Out | PHI2);
 	 assign STKOP = ~( NotReadyPhi1 | ~( decoder[21] | decoder[22] | decoder[23] | decoder[24] | decoder[25] | RTI_5 ));
 	 assign _SBXY = ~(_SB_X & _SB_Y);
-	 assign STXY  = ~(( STOR & decoder[0] ) | ( STOR & decoder[12] ));
+	 assign  STXY = ~(( STOR & decoder[0] ) | ( STOR & decoder[12] ));
 
     // ALU Control ---------------------------------------------------------------------------------------------------------
 	 // ALU INPUTS Control
@@ -503,12 +501,14 @@ module RandomLogic ( Clk, PHI1, PHI2, _ADL_PCL, PC_DB,
     mylatch DAA1 (Clk, PHI2, DAA1_Out, SBC0 | ~( decoder[52] & ~_D_OUT ));
     mylatch DAA2 (Clk, PHI1, _DAA, DAA1_Out);
 	 // ALU Carry input control
-    wire ACIN1_Out, ACIN2_Out, ACIN3_Out, ACIN4_Out;
-    mylatch ACIN1 (Clk, PHI2,  ACIN1_Out, ~( ~RET | _ADL_ADD ));
-    mylatch ACIN2 (Clk, PHI2,  ACIN2_Out, INC_SB);
-    mylatch ACIN3 (Clk, PHI2,  ACIN3_Out, BRX);
-    mylatch ACIN4 (Clk, PHI2,  ACIN4_Out, CSET);
-    mylatch ACIN  (Clk, PHI1, _ACIN, ~( ACIN1_Out | ACIN2_Out | ACIN3_Out | ACIN4_Out ));
+    //wire ACIN1_Out, ACIN2_Out, ACIN3_Out, ACIN4_Out;
+    //mylatch ACIN1 (Clk, PHI2,  ACIN1_Out, ~( ~RET | _ADL_ADD ));
+    //mylatch ACIN2 (Clk, PHI2,  ACIN2_Out, INC_SB);
+    //mylatch ACIN3 (Clk, PHI2,  ACIN3_Out, BRX);
+    //mylatch ACIN4 (Clk, PHI2,  ACIN4_Out, CSET);
+	 wire ACIN1;
+	 mylatch ACIN_IN (Clk, PHI2,  ACIN1, ~( ~( ~RET | _ADL_ADD )| INC_SB | BRX | CSET ));
+    mylatch ACIN    (Clk, PHI1, _ACIN, ACIN1 );
 	 
 	 // BUS Control -----------------------------------------------------------------------------------------------------
 	 // AC Control
@@ -948,10 +948,10 @@ endmodule   // Buses
 
 // ----------------------------------------------------------------
 // XYS Registers
-module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, S_S, SB_S,
+module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S,
                  SB, X_REG, Y_REG, S_REG );
 
-    input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, S_S, SB_S;
+    input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S;
     input [7:0] SB;
 	 output[7:0] X_REG, Y_REG, S_REG;
 	 
@@ -1001,15 +1001,15 @@ wire LATCH_C7;                    // ALU overflow circuit latches
 wire LATCH_DC7;                   // ALU overflow circuit latches
 wire DAAL, DAAHR, DSAL, DSAHR;    // Decimal correction control latches  
 // Combinatorics of logical operations
-wire [7:0]ANDo;                 // Logical AND
-wire [7:0]ORo;                  // Logical OR
-wire [7:0]XORo;                 // Logical XOR
-wire [7:0]SUMo;                 // Sum A + B
+wire [7:0]ANDo;                   // Logical AND
+wire [7:0]ORo;                    // Logical OR
+wire [7:0]XORo;                   // Logical XOR
+wire [7:0]SUMo;                   // Sum A + B
 assign ANDo[7:0] =   AI[7:0] &  BI[7:0];
 assign  ORo[7:0] =   AI[7:0] |  BI[7:0]; 
 assign XORo[7:0] =   AI[7:0] ^  BI[7:0];
 assign SUMo[7:0] = XORo[7:0] ^ CIN[7:0];
-wire [7:0]RESULT;               // ALU result bus
+wire [7:0]RESULT;                 // ALU result bus
 assign RESULT[7:0] = ({8{ANDS}} & ANDo[7:0]) | ({8{ORS}} & ORo [7:0]) | ({8{EORS}} & XORo[7:0]) | ({8{SRS}} & {1'b0 ,ANDo[7:1]}) | ({8{SUMS}} & SUMo[7:0]);
 // Combinatorics of ALU overflow
 wire [7:0]CIN;	
@@ -1062,7 +1062,7 @@ mylatch C7_Latch  (Clk, PHI2, LATCH_C7,  COUT[7]);
 mylatch DC7_Latch (Clk, PHI2, LATCH_DC7, DC7 );
 mylatch AVR_Latch (Clk, PHI2, AVR, ( COUT[6] & ORo[7] ) | ( ~COUT[6] & ~ANDo[7] ));
 //BCD latches
-mylatch DAAL_Latch  (Clk, PHI2, DAAL,     DCOUT3 & ~_DAA);
+mylatch DAAL_Latch  (Clk, PHI2, DAAL,  DCOUT3 & ~_DAA);
 mylatch DAAHR_Latch (Clk, PHI2, DAAHR, ~_DAA);
 mylatch DSAL_Latch  (Clk, PHI2, DSAL,  ~( DCOUT3 | _DSA ));
 mylatch DSAHR_Latch (Clk, PHI2, DSAHR, _DSA);
@@ -1098,8 +1098,8 @@ wire PCH_IN;
 assign PCH_IN = PCLS[7] & PCLS[6] & PCLS[5] & PCLS[4] & PCLS[3] & PCLS[2] & PCLS[1] & PCLS[0] & _IPC;
 wire PCH_03;
 assign PCH_03 = PCHS[3] & PCHS[2] & PCHS[1] & PCHS[0] & PCH_IN;
-//PCL
 wire[7:0] PCLS, PCHS;       // PCL/PCH Counter Intermediate Register
+//PCL
 mylatch PCLS_Latch[7:0] (Clk, PCL_PCL | ADL_PCL, PCLS[7:0], ( { 8 { PCL_PCL }} & PCL[7:0] )|( { 8 { ADL_PCL }} & ADL[7:0] ));
 mylatch  PCL_Latch[7:0] (Clk, PHI2, PCL[7:0],  ( PCLS[7:0] ^ { ADL_COUT[6:0], _IPC } ));
 //PCH
@@ -1119,9 +1119,9 @@ module mylatch(
    // Input 
    din 
 );
-    input Clk;
-	 input  en; // latch enable 
-	 input din; 
+    input   Clk;
+	 input    en; // latch enable 
+	 input   din; 
     output dout; 
     
     reg dout; 

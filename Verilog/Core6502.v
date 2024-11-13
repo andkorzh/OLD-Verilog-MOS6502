@@ -1121,10 +1121,9 @@ module mylatch(
 );
     input Clk;
     input en; // latch enable 
-    input  din; 
-    output dout; 
+    input din; 
+    output reg dout; 
     
-    reg dout; 
     always @(posedge Clk) begin 
          if (en) dout <= din;   
                           end

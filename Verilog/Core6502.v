@@ -839,7 +839,7 @@ module Dispatcher ( Clk, PHI1, PHI2,
     assign FETCH = ~( _ready | ~FetchLatch_Out );
     assign Z_IR  = ~( B_OUT & FETCH );
 	 
-	 // Long Cycle Counter (T2-T5) (Shift Register)
+    // Long Cycle Counter (T2-T5) (Shift Register)
     wire LatchIn_T2_Out, LatchOut_T2_Out, LatchIn_T3_Out, LatchOut_T3_Out,
     LatchIn_T4_Out, LatchOut_T4_Out, LatchIn_T5_Out, LatchOut_T5_Out;
 	 
@@ -915,7 +915,7 @@ module Buses (
    input [7:0]Y_REG,        // register Y
    input [7:0]X_REG,        // register X
    input [7:0]S_REG,        // Stack pointer
-   // Секция выходов
+   // Output section
    output [7:0]DB,	    // DB Bus
    output [7:0]SB,	    // SB Bus
    output [7:0]ADL,	    // ADL Bus
@@ -954,7 +954,6 @@ module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S,
 input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S;
 input [7:0] SB;
 output[7:0] X_REG, Y_REG, S_REG;
-	 
 	 
 wire [7:0]S_REG_1;
 	 

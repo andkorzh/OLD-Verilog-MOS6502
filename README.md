@@ -11,6 +11,9 @@ This design fits into the Altera EPM570 CPLD and is very optimal in terms of the
 
 ![EPM570Comp](https://github.com/user-attachments/assets/bc6b77db-352e-4342-93e0-c542ffc82d3d)
 
+Quartus RTL viewer structure
+
+![Core6502_inst](https://github.com/user-attachments/assets/ac532070-ff2a-4a73-b6db-d6bbd9485ee7)
 
 
 Some photo reports on the work done:

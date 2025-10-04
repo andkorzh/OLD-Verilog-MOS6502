@@ -107,7 +107,7 @@ module Core6502 (
     BranchLogic branch ( Clk, PHI1, PHI2, BRFW, _BRTAKEN, decoder[80], DB[7], ~IR[5], 
     decoder[121], decoder[126], _C_OUT, _V_OUT, _N_OUT, _Z_OUT );
 
-    Buses buses ( Z_ADL0, Z_ADL1, Z_ADL2, Z_ADH0, Z_ADH17, SB_DB, PCL_DB, PCH_DB, P_DB, AC_DB, AC_SB,			    
+	Buses buses ( Z_ADL0, Z_ADL1, Z_ADL2, Z_ADH0, Z_ADH17, SB_DB, PCL_DB, PCH_DB, P_DB, AC_DB, AC_SB, SB_AC,			    
     ADD_ADL, ADD_SB06, ADD_SB7, Y_SB, X_SB, S_SB, SB_ADH, S_ADL, DL_ADL, DL_ADH, DL_DB, PCL_ADL, PCH_ADH,	
     DL[7:0], PCL[7:0], PCH[7:0], FLAG[7:0], ADD[7:0], ACC[7:0], Y_REG[7:0], X_REG[7:0], S_REG[7:0], DB[7:0],
     SB[7:0], ADL[7:0], ADH[7:0]);
@@ -892,12 +892,13 @@ module Buses (
    input P_DB,		    // Flag data to DB Bus
    input AC_DB,		    // Accumulator to DB Bus
    input AC_SB,		    // Accumulator to SB Bus
+   input SB_AC,			// Data SB to accumulator	
    input ADD_ADL,	    // ALU output to ADL bus
    input ADD_SB06,	    // ALU output bits 0-6 per SB bus
    input ADD_SB7,	    // ALU output bit 7 to SB bus
-   input Y_SB,              // Y register to SB Bus
-   input X_SB,              // X register to SB Bus
-   input S_SB,              // S register to SB Bus	
+   input Y_SB,          // Y register to SB Bus
+   input X_SB,          // X register to SB Bus
+   input S_SB,          // S register to SB Bus	
    input SB_ADH,	    // Forwarding data between buses SB <-> ADH	 
    input S_ADL,             // Register S to ADL Bus
    input DL_ADL,            // DL latch value per ADL Bus
@@ -922,6 +923,8 @@ module Buses (
    output [7:0]ADH 	    // ADH Bus		
 );
 
+wire AC_SB2;
+assign AC_SB2 = ~AC_SB | SB_AC;	
 // Intermediate buses
 wire [7:0]DBT;  
 wire [7:0]SBT;
@@ -930,7 +933,7 @@ wire [7:0]ADHT;
 // DBT bus multiplexer
 assign DBT[7:0]  = ( ~{8{AC_DB}} | ACC[7:0] ) & ( ~{8{P_DB}} | FLAG[7:0] ) & ( ~{8{DL_DB}} | DL[7:0] ) & ( ~{8{PCL_DB}} | PCL[7:0] ) & ( ~{8{PCH_DB}} | PCH[7:0] );
 // SBT bus multiplexer
-assign SBT[7:0]  = ( ~{8{X_SB}} | X_REG[7:0] ) & ( ~{8{Y_SB}} | Y_REG[7:0] ) & ( ~{8{S_SB}} | S_REG[7:0] ) & ( ~{8{AC_SB}} | ACC[7:0] ) & { ~ADD_SB7 | ADD[7], ~{7{ADD_SB06}} | ADD[6:0]}; 
+assign SBT[7:0]  = ( ~{8{X_SB}} | X_REG[7:0] ) & ( ~{8{Y_SB}} | Y_REG[7:0] ) & ( ~{8{S_SB}} | S_REG[7:0] ) & ( {8{AC_SB2}} | ACC[7:0] ) & { ~ADD_SB7 | ADD[7], ~{7{ADD_SB06}} | ADD[6:0]}; 
 // ADHT bus multiplexer
 assign ADHT[7:0] = ( ~{8{PCH_ADH}} | PCH[7:0] ) & ( ~{8{DL_ADH}} | DL[7:0] ) & { {7{ ~Z_ADH17 }}, ~Z_ADH0 };
 // SBH bus multiplexer
@@ -1127,3 +1130,4 @@ module mylatch(
          if (en) dout <= din;   
                           end
 endmodule // mylatch
+

@@ -112,7 +112,7 @@ module Core6502 (
     DL[7:0], PCL[7:0], PCH[7:0], FLAG[7:0], ADD[7:0], ACC[7:0], Y_REG[7:0], X_REG[7:0], S_REG[7:0], DB[7:0],
     SB[7:0], ADL[7:0], ADH[7:0]);
 	 
-    XYSRegs regs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S, SB[7:0], X_REG[7:0], Y_REG[7:0], S_REG[7:0] );
+	XYSRegs regs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S, S_S, SB[7:0], X_REG[7:0], Y_REG[7:0], S_REG[7:0] );
 
     ALU alu ( Clk, PHI2, Z_ADD, SB[7:0], SB_ADD, DB[7:0], NDB_ADD, DB_ADD, ADL[7:0], ADL_ADD, _ACIN, ANDS, ORS, EORS, SRS,               
     SUMS, SB_AC, _DAA, _DSA, ACC[7:0], ADD[7:0], ACR, AVR );
@@ -951,10 +951,10 @@ endmodule   // Buses
 
 // ----------------------------------------------------------------
 // XYS Registers
-module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S,
+module XYSRegs ( Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S, S_S,
                  SB, X_REG, Y_REG, S_REG );
 
-input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S;
+input Clk, PHI2, Y_SB, SB_Y, X_SB, SB_X, S_SB, SB_S, S_S;
 input [7:0] SB;
 output[7:0] X_REG, Y_REG, S_REG;
 	 
@@ -962,7 +962,7 @@ wire [7:0]S_REG_1;
 	 
 mylatch X_REG_Latch[7:0]  (Clk, SB_X, X_REG[7:0],   SB[7:0]);
 mylatch Y_REG_Latch[7:0]  (Clk, SB_Y, Y_REG[7:0],   SB[7:0]);
-mylatch S_REG1_Latch[7:0] (Clk, SB_S, S_REG_1[7:0], SB[7:0]);
+mylatch S_REG1_Latch[7:0] (Clk, SB_S | ( S_S & S_SB ), S_REG_1[7:0], SB[7:0]);  // BB Hack	
 mylatch S_REG_Latch[7:0]  (Clk, PHI2, S_REG[7:0],   S_REG_1[7:0]);	 
 						 
 endmodule   // XYSRegs
@@ -1130,4 +1130,5 @@ module mylatch(
          if (en) dout <= din;   
                           end
 endmodule // mylatch
+
 

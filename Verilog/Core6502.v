@@ -1027,7 +1027,7 @@ assign BCDRES[7:0] = { SB[7:5] ^ bcd[5:3], SB[4], SB[3:1] ^ bcd[2:0], SB[0] };
 // BCD CARRY
 wire DC3,DC7;
 wire a,b,c,d,e,f,g; // intermediate signals BCD CARRY
-assign a   = ~( ~ORo[0] | ( ~ACIN & ~ANDo[0] ));
+assign a   = ~( ~ORo[0] | ( _ACIN & ~ANDo[0] ));
 assign b   = ~( a & ANDo[1] );
 assign c   = ~( ANDo[2] | XORo[3] );
 assign d   = ~( a | ~( ANDo[2] | ~ORo[2] ) | ANDo[1] | XORo[1] );

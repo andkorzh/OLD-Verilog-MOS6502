@@ -82,7 +82,7 @@ module Core6502 (
     mylatch ADDRL_Latch[7:0] (Clk, ADL_ABL & PHI1, ADDR[7:0],  ADL[7:0]);
     mylatch ADDRH_Latch[7:0] (Clk, ADH_ABH & PHI1, ADDR[15:8], ADH[7:0]);
 
-    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DLR[7:0] );
+    Predecode predecode ( Clk, PHI1, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DLR[7:0] );
 
     Decoder decode ( decoder[128:0], IR[7:0], _T0, _T1X, _T2, _T3, _T4, _T5, _PRDY );
 
@@ -136,9 +136,9 @@ endmodule   // Core6502
 // #IMPLIED : NOT Implied instruction (has operands)
 // #TWOCYCLE : NOT short two-cycle instruction (more than 2 cycles)
 
-module Predecode ( Clk, PHI1, PHI2, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, ID );
+module Predecode ( Clk, PHI1, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, ID );
 
-    input Clk, PHI1, PHI2, Z_IR, FETCH;
+    input Clk, PHI1, Z_IR, FETCH;
     output [7:0]IR;
     output IMPLIED, _TWOCYCLE;
     input [7:0]ID;

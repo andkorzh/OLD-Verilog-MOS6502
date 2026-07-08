@@ -23,14 +23,14 @@ module Core6502 (
     // Inputs
     Clk, PHI0, BCD_OFF, _NMI, _IRQ, _RES, RDY, SO,
     // Inout
-    DATA
+    DATA, DATAo
 );
 
     input  Clk, PHI0, BCD_OFF, _NMI, _IRQ, _RES, RDY, SO;
     output PHI1, PHI2, RW, SYNC;
     output[15:0] ADDR;
-    inout[7:0]   DATA;
-
+    input[7:0]   DATA;
+    output[7:0]  DATAo;
     wire [7:0]DLR, DOR;
 
     // Clock Generator
@@ -40,7 +40,7 @@ module Core6502 (
     assign SYNC = T1;
     assign RW = ~RWLatch_Out;
     // External Data Bus Control
-    assign DATA[7:0] = ~RW & PHI2 ? DOR[7:0] : 8'hZZ;
+    assign DATAo[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
     // DL Bus    
     assign DL[7:0] =   DLR[7:0] & {8{PHI1}};
     // Internal wires
@@ -83,7 +83,7 @@ module Core6502 (
     mylatch ADDRL_Latch[7:0] (Clk, ADL_ABL & PHI1, ADDR[7:0],  ADL[7:0]);
     mylatch ADDRH_Latch[7:0] (Clk, ADH_ABH & PHI1, ADDR[15:8], ADH[7:0]);
 
-    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, B_OUT, _ready, T1, DATA[7:0] );
+    Predecode predecode ( Clk, PHI1, PHI2, IR[7:0], IMPLIED, _TWOCYCLE, Z_IR, FETCH, DLR[7:0] );
 
     Decoder decode ( decoder[128:0], IR[7:0], _T0, _T1X, _T2, _T3, _T4, _T5, _PRDY );
 
@@ -97,7 +97,7 @@ module Core6502 (
     P_DB, ACR_C, AVR_V, DBZ_Z, DB_N, DB_P, DB_C, DB_V, IR5_C, IR5_I, IR5_D, ZERO_V, ONE_V,
     STOR, BRK6E, Z_ADL[0], SO, BRFW, ACRL2, _C_OUT, _D_OUT, _ready, T0, T1, T6, T7, decoder[128:0] );
 
-    Dispatcher dispatch ( Clk, PHI1, PHI2, _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7,
+    Dispatcher dispatch ( Clk, PHI1, PHI2, _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7, Z_IR, FETCH,
     WR, ACRL2, RDY, DORES, RESP, B_OUT, BRK6E, BRFW, _BRTAKEN, ACR, _ADL_PCL, PC_DB, IMPLIED, _TWOCYCLE, decoder[128:0] );
 
     Flags flags ( Clk, PHI1, PHI2, _Z_OUT, _N_OUT, _C_OUT, _D_OUT, _I_OUT, _V_OUT,
@@ -131,28 +131,30 @@ endmodule   // Core6502
 // #IMPLIED : NOT Implied instruction (has operands)
 // #TWOCYCLE : NOT short two-cycle instruction (more than 2 cycles)
 
-module Predecode ( Clk, PHI1, PHI2, IR, IMPLIED, _TWOCYCLE, B_OUT, _ready, T1, DATA );
+// Predecode
+// Controls:
+// 0/IR : "Inject" BRK opcode after interrupt (force IR = 0x00), to initiate common "BRK-sequence" service
+// #IMPLIED : NOT Implied instruction (has operands)
+// #TWOCYCLE : NOT short two-cycle instruction (more than 2 cycles)
 
-    input Clk, PHI1, PHI2, B_OUT, _ready, T1;
+module Predecode ( Clk, PHI1, PHI2, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, ID );
+
+    input Clk, PHI1, PHI2, Z_IR, FETCH;
     output [7:0]IR;
     output IMPLIED, _TWOCYCLE;
-    input [7:0]DATA;
+    input [7:0]ID;
     wire temp1, temp2;
     wire [7:0]PDout;
     wire [7:0]PD;
-    wire Z_IR, FETCH;
-    assign Z_IR = B_OUT & FETCH;
-    assign FETCH = ~( ~T1 | _ready);
-    assign PDout[7:0] =  {8{~Z_IR}}  & PD[7:0];
+    assign PDout[7:0] =  Z_IR ? 8'h00 : ID[7:0];
     assign IMPLIED    = ~(  PDout[0] | PDout[2] | ~PDout[3] );
     assign temp1      = ~( ~PDout[0] | PDout[2] | ~PDout[3] | PDout[4] );
-    assign temp2      = ~(  PDout[0] | PDout[2] |  PDout[3] | PDout[4] | ~PDout[7] );
+    assign temp2      = ~(  PDout[0] | PDout[2] |  PDout[3] | PDout[4] | ~PDout[7] ); 
     assign _TWOCYCLE  = ~( temp1 | temp2 | ( IMPLIED & ( PDout[1] | PDout[4] | PDout[7] )));
 
     mylatch IR_Latch[7:0] (Clk, FETCH & PHI1, IR[7:0], PDout[7:0]);
-    mylatch PD_Latch[7:0] (Clk, PHI2, PD[7:0], DATA[7:0]);
 
-endmodule   // Predecode  
+endmodule   // Predecode
 
 // Decoder
 module Decoder (
@@ -745,14 +747,14 @@ endmodule   // BranchLogic
 // ------------------
 //Dispatcher
 module Dispatcher ( Clk, PHI1, PHI2,
-    _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7, WR, ACRL2, RDY,
+    _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7, Z_IR, FETCH, WR, ACRL2, RDY,
     DORES, RESP, B_OUT, BRK6E, BRFW, _BRTAKEN, ACR, _ADL_PCL, PC_DB, IMPLIED, _TWOCYCLE, decoder );
 
     input Clk, PHI1, PHI2, RDY;
     input DORES, RESP, B_OUT, BRK6E, BRFW, _BRTAKEN, ACR, _ADL_PCL, PC_DB, IMPLIED, _TWOCYCLE;
     input [128:0] decoder;
 
-    output _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7, WR, ACRL2;
+    output _ready, STOR, _IPC, _T0, T0, T1, _T1X, _T2, _T3, _T4, _T5, T6, T7, Z_IR, FETCH, WR, ACRL2;
     // Misc
     wire BR2, BR3, _MemOP, STOR, _SHIFT;
     assign BR2 = decoder[80];
@@ -837,6 +839,8 @@ module Dispatcher ( Clk, PHI1, PHI2,
 
     wire FetchLatch_Out;
     mylatch FetchLatch (Clk, PHI2, FetchLatch_Out, T1);
+    assign FETCH = ~( _ready | ~FetchLatch_Out );
+    assign Z_IR  = ~( B_OUT & FETCH );
 
     // Extended Cycle Counter (T2-T5) (Shift Register)
     wire LatchIn_T2_Out, LatchOut_T2_Out, LatchIn_T3_Out, LatchOut_T3_Out,

@@ -40,7 +40,7 @@ module Core6502 (
     assign SYNC = T1;
     assign RW = ~RWLatch_Out;
     // External Data Bus Control
-    assign DATA[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
+    assign DATA[7:0] = ~RW & PHI2 ? DOR[7:0] : 8'hZZ;
     // DL Bus    
     assign DL[7:0] =   DLR[7:0] & {8{PHI1}};
     // Internal wires
@@ -170,7 +170,7 @@ module Decoder (
     wire PUSHP;
     wire IR01;
     assign IR01 = IR[0] | IR[1];
-    assign decoder_out[0]   = ~(  IR[5] |  IR[6] | ~IR[2] | ~IR[7] |  IR01  );                             // Tx  STY
+    assign decoder_out[0]   = ~(  IR[5] |  IR[6] | ~IR[2] | ~IR[7] |  IR01  );                             // Tx STY
     assign decoder_out[1]   = ~(  IR[2] |  IR[3] | ~IR[4] | ~IR[0] |  _T3   );                             // T3 IND_Y
     assign decoder_out[2]   = ~(  IR[2] | ~IR[3] | ~IR[4] | ~IR[0] |  _T2   );                             // T2 ABS_Y
     assign decoder_out[3]   = ~(  _T0   |  IR[5] |  IR[2] | ~IR[3] |  IR[4] | ~IR[7] |  IR01  );           // T0 DEY_INY
@@ -838,7 +838,7 @@ module Dispatcher ( Clk, PHI1, PHI2,
     wire FetchLatch_Out;
     mylatch FetchLatch (Clk, PHI2, FetchLatch_Out, T1);
 
-    // Long Cycle Counter (T2-T5) (Shift Register)
+    // Extended Cycle Counter (T2-T5) (Shift Register)
     wire LatchIn_T2_Out, LatchOut_T2_Out, LatchIn_T3_Out, LatchOut_T3_Out,
     LatchIn_T4_Out, LatchOut_T4_Out, LatchIn_T5_Out, LatchOut_T5_Out;
 
@@ -858,7 +858,7 @@ module Dispatcher ( Clk, PHI1, PHI2,
     mylatch LatchOut_T5 (Clk, PHI2, LatchOut_T5_Out, _T5);
     assign _T5 = ( LatchIn_T5_Out | TRES2 );
 
-    // Extended Cycle Counter (T6-T7)
+    // Long Cycle Counter (T6-T7)
     wire T67Latch_Out, T6Latch1_Out, T6Latch2_Out, T7Latch1_Out, T7Latch2_Out;
     mylatch T67Latch (Clk, PHI2, T67Latch_Out, ~( _SHIFT | _MemOP | _ready ));
     mylatch T6Latch1 (Clk, PHI1, T6Latch1_Out, ~(( T6Latch2_Out & _ready ) | T67Latch_Out ));
@@ -1027,7 +1027,7 @@ assign BCDRES[7:0] = { SB[7:5] ^ bcd[5:3], SB[4], SB[3:1] ^ bcd[2:0], SB[0] };
 // BCD CARRY
 wire DC3,DC7;
 wire a,b,c,d,e,f,g; // intermediate signals BCD CARRY
-assign a   = ~( ~ORo[0] | ( _ACIN & ~ANDo[0] ));
+assign a   = ~( ~ORo[0] | ( ~ACIN & ~ANDo[0] ));
 assign b   = ~( a & ANDo[1] );
 assign c   = ~( ANDo[2] | XORo[3] );
 assign d   = ~( a | ~( ANDo[2] | ~ORo[2] ) | ANDo[1] | XORo[1] );
@@ -1107,7 +1107,7 @@ module mylatch(
     input Clk;
     input en; // latch enable 
     input din;
-    output reg dout;//  = 1'h0;
+    output reg dout;  //  = 1'h0;
     
     always @(posedge Clk) begin
          if (en) dout <= din;

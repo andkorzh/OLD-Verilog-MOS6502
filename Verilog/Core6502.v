@@ -1,7 +1,7 @@
 // Synthesizable MOS 6502 on Verilog
 // Project Breaks http://breaknes.com
 //
-//         2012 - 2024
+//         2012 - 2026
 //
 // authors:  org      -  top part
 //           andkorzh -  bottom part
@@ -23,14 +23,13 @@ module Core6502 (
     // Inputs
     Clk, PHI0, BCD_OFF, _NMI, _IRQ, _RES, RDY, SO,
     // Inout
-    DATA, DATAo
+    DATA
 );
 
     input  Clk, PHI0, BCD_OFF, _NMI, _IRQ, _RES, RDY, SO;
     output PHI1, PHI2, RW, SYNC;
     output[15:0] ADDR;
-    input[7:0]   DATA;
-    output[7:0]  DATAo;
+    inout[7:0]   DATA;
     wire [7:0]DLR, DOR;
 
     // Clock Generator
@@ -40,7 +39,7 @@ module Core6502 (
     assign SYNC = T1;
     assign RW = ~RWLatch_Out;
     // External Data Bus Control
-    assign DATAo[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
+    assign DATA[7:0] = ~RW ? DOR[7:0] : 8'hZZ;
     // DL Bus    
     assign DL[7:0] =   DLR[7:0] & {8{PHI1}};
     // Internal wires
@@ -837,6 +836,7 @@ module Dispatcher ( Clk, PHI1, PHI2,
     assign _IPC = ipc1_out & ( ipc2_out | ipc3_out );
     assign  BRA =  ( BRFW ^ ~ACR ) & BR_Latch2_Out;
 
+    //  Fetch Control
     wire FetchLatch_Out;
     mylatch FetchLatch (Clk, PHI2, FetchLatch_Out, T1);
     assign FETCH = ~( _ready | ~FetchLatch_Out );

@@ -153,7 +153,7 @@ module Predecode ( Clk, PHI1, IR, IMPLIED, _TWOCYCLE, Z_IR, FETCH, ID );
 
     mylatch IR_Latch[7:0] (Clk, FETCH & PHI1, IR[7:0], PDout[7:0]);
 
-endmodule   // Predecode
+endmodule  // Predecode
 
 // Decoder
 module Decoder (
